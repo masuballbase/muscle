@@ -119,7 +119,7 @@ npm run verify:phase5:cleanup
 
 ## Phase 6 品質・JSON出力
 
-[Phase 6](phase6.md) と [JSON形式](data-export-format.md) を参照。新同期RPCはユーザー承認済みで、SQL Editor適用と公開確認が必要。コードからDBマイグレーションを自動実行しない。旧タブは閉じ、同じ記録を新旧クライアントで同時編集しない。
+[Phase 6](phase6.md) と [JSON形式](data-export-format.md) を参照。新同期RPCはユーザー承認・SQL Editor適用済みで、公開APIと実DB同期の再検証も成功。最新結果はPhase 6の記録を参照。コードからDBマイグレーションを自動実行しない。旧タブは閉じ、同じ記録を新旧クライアントで同時編集しない。
 
 ```sh
 npm run test:browser:phase6:ready

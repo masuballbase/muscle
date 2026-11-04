@@ -66,7 +66,7 @@ async function transport(
   label: string,
   userId: string,
 ) {
-  const network = { offline: false };
+  const network = { offline: false, loseResponse: false, lostResponse: false };
   await context.route(
     "https://mcuiikilwrxuylwuljmk.supabase.co/**",
     async (route) => {
@@ -134,6 +134,16 @@ async function transport(
           headers,
           body: request.postData() ?? undefined,
         });
+        if (
+          network.loseResponse && response.ok &&
+          request.method() === "POST" && table === "sync_training_session"
+        ) {
+          await response.arrayBuffer(); // DB committed; deliberately hide only its success response.
+          network.loseResponse = false;
+          network.lostResponse = true;
+          await route.abort("connectionreset");
+          return;
+        }
         const output = Object.fromEntries(response.headers.entries());
         delete output["content-encoding"];
         delete output["content-length"];
@@ -490,8 +500,21 @@ for (const label of ["A", "B"])
           .getByRole("navigation")
           .getByRole("link", { name: "記録", exact: true })
           .click();
+        network.loseResponse = true;
         network.offline = false;
         await page.evaluate(() => window.dispatchEvent(new Event("online")));
+        await expect.poll(() => network.lostResponse, { timeout: 30000 }).toBe(true);
+        await expect(page.locator(".save-status")).toContainText("未同期");
+        const committed = await client.from("sessions").select("*")
+          .eq("user_id", userId).eq("id", currentId!);
+        expect(committed.error).toBeNull();
+        expect(committed.data?.[0]?.status).toBe("completed");
+        await page.getByRole("button", { name: "保存を再試行", exact: true }).click();
+        await expect(page.locator(".save-status")).toContainText("同期済み", { timeout: 30000 });
+        const replayed = await client.from("sessions").select("*")
+          .eq("user_id", userId).eq("id", currentId!);
+        expect(replayed.error).toBeNull();
+        expect(replayed.data).toEqual(committed.data);
       }
       await expect
         .poll(
