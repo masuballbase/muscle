@@ -19,7 +19,7 @@ import {
   type RecordType,
   type Workout,
 } from "@/lib/training/model";
-function PeriodSelect({
+export function PeriodSelect({
   value,
   onChange,
 }: {

@@ -13,3 +13,7 @@ Phase 3は最終監査とmainへのマージが完了しました。Phase 4で�
 - [Phase 3の実装・検証・SQL適用手順](docs/phase3.md)
 
 - [Phase 4の実装・分析ルール・検証結果](docs/phase4.md)
+
+Phase 5ではInBodyの最新4指標・6種類のグラフ・CSV取り込み・44項目の測定履歴編集を追加しました。ユーザー提供の列定義と匿名化サンプルで正式な44ヘッダーを確認済みです。
+
+- [Phase 5の実装・CSV保存仕様・検証結果](docs/phase5.md)
