@@ -47,7 +47,9 @@ export function TrainingHome() {
         ) : (
           <button
             className="primary wide"
-            disabled={!ready || saveState === "端末保存失敗"}
+            disabled={
+              !ready || saveState === "端末保存失敗" || controller.hasBlocked
+            }
             onClick={() => void controller.start()}
           >
             自由に開始
@@ -56,7 +58,7 @@ export function TrainingHome() {
         {!active && (
           <button
             className="wide"
-            disabled={!ready}
+            disabled={!ready || controller.hasBlocked}
             onClick={() => setMenuMode("start")}
           >
             メニューから開始

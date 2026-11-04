@@ -41,12 +41,15 @@ export function openUserStore(userId: string, factory?: IDBFactory) {
     };
     request.onsuccess = () => {
       if (failed) request.result.close();
-      else resolve(new UserStore(request.result));
+      else resolve(new UserStore(request.result, userId));
     };
   });
 }
 export class UserStore {
-  constructor(private readonly db: IDBDatabase) {
+  constructor(
+    private readonly db: IDBDatabase,
+    readonly userId: string,
+  ) {
     db.onversionchange = () => db.close();
   }
   close() {
@@ -81,6 +84,29 @@ export class UserStore {
   }
   async remove(collection: LocalCollection, id: string) {
     await this.run(collection, "readwrite", (store) => store.delete(id));
+  }
+  exportSnapshot() {
+    return new Promise<{
+      sessions: LocalRecord[];
+      menus: LocalRecord[];
+      queue: LocalRecord[];
+      cache: LocalRecord | undefined;
+    }>((resolve, reject) => {
+      const tx = this.db.transaction(collections, "readonly");
+      const sessions = tx.objectStore("session_drafts").getAll();
+      const menus = tx.objectStore("menu_drafts").getAll();
+      const queue = tx.objectStore("sync_queue").getAll();
+      const cache = tx.objectStore("cache").get("data-export");
+      tx.oncomplete = () =>
+        resolve({
+          sessions: sessions.result,
+          menus: menus.result,
+          queue: queue.result,
+          cache: cache.result,
+        });
+      tx.onerror = tx.onabort = () =>
+        reject(new Error("端末データを読み取れません。出力を中止しました。"));
+    });
   }
   async pendingCount() {
     const [sessions, menus, queue] = await Promise.all(

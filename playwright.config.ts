@@ -8,6 +8,7 @@ export default defineConfig({
   outputDir: "/tmp/muscle-playwright-results",
   use: {
     baseURL: "http://127.0.0.1:3102",
+    serviceWorkers: "block",
     trace: "off",
     screenshot: "off",
     video: "off",

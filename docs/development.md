@@ -115,3 +115,18 @@ npm run verify:phase5:cleanup
 ```
 
 実DB試験は専用UUIDの台帳を使用し、既存測定は変更しない。中断時は `/tmp/muscle-phase5-fixtures.json`、`/tmp/muscle-phase5-training-fixtures.json` を手動削除せずcleanupで処理する。DBのDDL/RLS変更は不要。新しいSQL fixtureもローカルPGlite専用で、本番Supabaseへ適用しない。
+
+
+## Phase 6 品質・JSON出力
+
+[Phase 6](phase6.md) と [JSON形式](data-export-format.md) を参照。新同期RPCはユーザー承認済みで、SQL Editor適用と公開確認が必要。コードからDBマイグレーションを自動実行しない。旧タブは閉じ、同じ記録を新旧クライアントで同時編集しない。
+
+```sh
+npm run test:browser:phase6:ready
+npm run test:browser:dev
+npm run verify:phase6:sync
+npm run test:browser
+npm run verify:phase6:cleanup
+```
+
+ready試験は新RPCを必要とする実ブラウザ4件を除外するため、全回帰とは異なる。dev試験は3103番、本番ビルドのブラウザ試験は3102番を使用し、同じ成果物を並列で上書きしないよう順に実行する。JSONダウンロード・ログ・専用台帳は/tmpに置き、Gitへ含めない。Service Workerは本番ビルドのみで、リリースごとにCACHE名を更新する。

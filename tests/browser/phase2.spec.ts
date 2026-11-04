@@ -78,6 +78,38 @@ async function transport(
           return;
         }
         const table = url.pathname.split("/").at(-1)!;
+        if (request.method() === "POST" && table === "sync_training_session") {
+          const body = JSON.parse(request.postData()!);
+          const w = body.p_workout;
+          for (const [target, id] of [
+            ["sessions", w.id],
+            ...w.sections.flatMap(
+              (s: { id: string; sets: { id: string }[] }) => [
+                ["session_exercises", s.id],
+                ...s.sets.map((set) => ["workout_sets", set.id]),
+              ],
+            ),
+          ]) {
+            if (
+              !journal.some(
+                (e) => e.account === label && e.table === target && e.id === id,
+              )
+            ) {
+              const checked = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${target}?id=eq.${id}&user_id=eq.${userId}&select=id`,
+                {
+                  headers: {
+                    apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+                    Authorization: request.headers().authorization,
+                  },
+                },
+              );
+              if (!checked.ok || (await checked.json()).length)
+                throw new Error("Refusing an existing fixture row");
+              track(label, target, id);
+            }
+          }
+        }
         if (
           request.method() === "POST" &&
           [

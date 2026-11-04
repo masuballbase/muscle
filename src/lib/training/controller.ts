@@ -9,6 +9,8 @@ import {
   finish,
   validNumber,
   prs,
+  syncSnapshot,
+  SyncConflictError,
 } from "./model";
 import type { TrainingRepository } from "./repository";
 export type SaveState =
@@ -46,6 +48,8 @@ export class TrainingController {
   private readFailed = false;
   private busy = false;
   private syncing = false;
+  private exportPaused = false;
+  private syncWaiters = new Set<() => void>();
   private writes = new Set<Promise<void>>();
   private persisted = new Map<string, number>();
   private failures = new Set<string>();
@@ -66,6 +70,22 @@ export class TrainingController {
     if (this.disposed) return;
     this.state = { ...this.state, ...patch };
     for (const listener of this.listeners) listener();
+  }
+  get hasBlocked() {
+    return this.state.workouts.some((w) => w.syncBlocked);
+  }
+  async withExportLock<T>(task: () => Promise<T>): Promise<T> {
+    if (this.exportPaused) throw new Error("出力中です。");
+    this.exportPaused = true;
+    try {
+      await this.flushLocal();
+      if (this.syncing)
+        await new Promise<void>((resolve) => this.syncWaiters.add(resolve));
+      return await task();
+    } finally {
+      this.exportPaused = false;
+      this.schedule();
+    }
   }
   get active() {
     return this.state.workouts.find((w) => !w.endedAt);
@@ -94,7 +114,16 @@ export class TrainingController {
           .filter(
             (w) => Array.isArray(w.sections) && typeof w.revision === "number",
           );
-        for (const w of saved) this.persisted.set(w.id, w.revision);
+        for (const w of saved) {
+          const confirmed = cache?.value.workouts.find(
+            (old) =>
+              old.id === w.id &&
+              old.revision === w.syncedRevision &&
+              old.syncedRevision === old.revision,
+          );
+          if (!w.syncBase && confirmed) w.syncBase = syncSnapshot(confirmed);
+          this.persisted.set(w.id, w.revision);
+        }
         const localIds = new Set(saved.map((w) => w.id));
         this.set({
           exercises: cache?.value.exercises ?? [],
@@ -117,6 +146,8 @@ export class TrainingController {
       return;
     }
     try {
+      if (typeof navigator !== "undefined" && navigator.onLine === false)
+        throw new Error("offline");
       const [exercises, remote, menus] = await Promise.all([
         this.repo.exercises(),
         this.repo.workouts(),
@@ -242,7 +273,14 @@ export class TrainingController {
     await this.sync();
   }
   async sync() {
-    if (this.syncing || this.disposed) return;
+    let syncingId: string | undefined;
+    if (this.syncing || this.disposed || this.exportPaused || this.hasBlocked)
+      return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      this.connected = false;
+      this.refreshStatus();
+      return;
+    }
     this.syncing = true;
     this.refreshStatus();
     try {
@@ -257,7 +295,8 @@ export class TrainingController {
               a.startedAt.localeCompare(b.startedAt),
           );
         const w = pending[0];
-        if (!w || this.disposed) break;
+        if (!w || this.disposed || this.exportPaused) break;
+        syncingId = w.id;
         await this.flushLocal();
         if ((this.persisted.get(w.id) ?? 0) < w.revision) break;
         const invalid = w.sections.some((s) =>
@@ -272,11 +311,34 @@ export class TrainingController {
           throw new Error(
             "入力値にエラーがあります。端末保存は継続しています。",
           );
-        await this.repo.sync(structuredClone(w));
+        const attempts = [...(w.syncAttempts ?? [])];
+        if (!attempts.some((a) => a.revision === w.revision)) {
+          if (attempts.length >= 63)
+            throw new SyncConflictError(
+              "未確認の同期試行が上限に達しました。安全のため停止し、端末データを保持しています。JSON出力で確認してください。",
+            );
+          attempts.push(syncSnapshot(w));
+        }
+        const sent = { ...w, syncAttempts: attempts };
+        this.set({
+          workouts: this.state.workouts.map((item) =>
+            item.id === w.id ? sent : item,
+          ),
+        });
+        this.persist(sent);
+        await this.flushLocal();
+        if (this.failures.size) break;
+        await this.repo.sync(structuredClone(sent));
         this.connected = true;
         if (this.disposed) return;
         const current = this.state.workouts.find((item) => item.id === w.id)!;
-        const acknowledged = { ...current, syncedRevision: w.revision };
+        const acknowledged = {
+          ...current,
+          syncedRevision: w.revision,
+          syncBase: syncSnapshot(w),
+          syncAttempts: [],
+          syncBlocked: false,
+        };
         this.set({
           workouts: this.state.workouts.map((item) =>
             item.id === w.id ? acknowledged : item,
@@ -290,6 +352,19 @@ export class TrainingController {
       await this.cache();
     } catch (error) {
       this.connected = false;
+      if (error instanceof SyncConflictError) {
+        const blocked = this.state.workouts.find((w) => w.id === syncingId);
+        if (blocked) {
+          const saved = { ...blocked, syncBlocked: true };
+          this.set({
+            workouts: this.state.workouts.map((w) =>
+              w.id === blocked.id ? saved : w,
+            ),
+          });
+          this.persist(saved);
+          await this.flushLocal();
+        }
+      }
       this.set({
         error:
           error instanceof Error
@@ -299,10 +374,18 @@ export class TrainingController {
     } finally {
       this.syncing = false;
       this.refreshStatus();
+      for (const resolve of this.syncWaiters) resolve();
+      this.syncWaiters.clear();
     }
   }
   async start(menu?: Menu) {
-    if (this.busy || !this.state.ready || this.active || this.failures.size)
+    if (
+      this.busy ||
+      !this.state.ready ||
+      this.active ||
+      this.failures.size ||
+      this.hasBlocked
+    )
       return;
     this.busy = true;
     try {

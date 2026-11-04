@@ -65,7 +65,17 @@ async function connect(
             ? JSON.parse(request.postData()!)
             : null;
           if (rpc) {
-            if (table === "save_training_menu") {
+            if (table === "sync_training_session") {
+              const w = body.p_workout;
+              await fixtures.reserve(account, "sessions", w.id);
+              for (const s of w.sections) {
+                if (!fixtures.has(account.label, "exercises", s.exerciseId))
+                  throw new Error("Unexpected exercise");
+                await fixtures.reserve(account, "session_exercises", s.id);
+                for (const set of s.sets)
+                  await fixtures.reserve(account, "workout_sets", set.id);
+              }
+            } else if (table === "save_training_menu") {
               if (
                 body.p_expected !== null &&
                 !fixtures.has(account.label, "menus", body.p_id)

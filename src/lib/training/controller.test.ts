@@ -13,7 +13,7 @@ async function setup(store?: UserStore) {
   const db = store ?? (await openUserStore("a", new IDBFactory()));
   const repo = {
     exercises: vi.fn().mockResolvedValue([]),
-    menus:vi.fn().mockResolvedValue([]),
+    menus: vi.fn().mockResolvedValue([]),
     workouts: vi.fn().mockResolvedValue([]),
     sync: vi.fn().mockResolvedValue(undefined),
     saveExercise: vi.fn(),
@@ -285,4 +285,77 @@ it("recomputes first-record baselines after deleting the original performed set"
   }));
   expect(c.state.toast).toHaveLength(0);
   expect(c.active!.initialRecords?.[0].value).toBe(8);
+});
+
+it("persists uncertain attempts before sending and retains newer local changes after a lost response", async () => {
+  const { c, repo, db } = await setup();
+  await c.start();
+  let release!: () => void;
+  repo.sync.mockImplementationOnce(async () => {
+    expect(
+      (
+        await db.get<{ syncAttempts: unknown[] }>(
+          "session_drafts",
+          c.active!.id,
+        )
+      )?.value.syncAttempts,
+    ).toHaveLength(1);
+    await new Promise<void>((r) => {
+      release = r;
+    });
+    throw new Error("response lost");
+  });
+  const first = c.sync();
+  await vi.waitFor(() => expect(repo.sync).toHaveBeenCalledOnce());
+  c.edit((w) => ({ ...w, name: "newer input" }));
+  release();
+  await first;
+  expect(c.active!.name).toBe("newer input");
+  expect(c.active!.syncedRevision).toBe(0);
+  expect(c.active!.syncAttempts).toHaveLength(1);
+  repo.sync.mockResolvedValue(undefined);
+  await c.sync();
+  expect(c.active!.syncAttempts).toHaveLength(0);
+  expect(c.active!.syncBase?.name).toBe("newer input");
+  expect(c.active!.syncedRevision).toBe(c.active!.revision);
+});
+it("permanently quarantines a conflict across reload, keeps device inputs and does not auto-retry or start a new session", async () => {
+  const { SyncConflictError } = await import("./model");
+  const { c, repo, db } = await setup();
+  await c.start();
+  repo.sync.mockRejectedValue(new SyncConflictError("conflict"));
+  await c.sync();
+  await c.flushLocal();
+  expect(c.hasBlocked).toBe(true);
+  expect(c.state.saveState).toBe("端末保存済み・未同期");
+  await c.retry();
+  expect(repo.sync).toHaveBeenCalledOnce();
+  const reopened = await setup(db);
+  expect(reopened.c.hasBlocked).toBe(true);
+  await reopened.c.sync();
+  expect(reopened.repo.sync).not.toHaveBeenCalled();
+});
+it("waits for an in-flight sync, pauses new sends during export and keeps output reads separate from acknowledgements", async () => {
+  const { c, repo } = await setup();
+  await c.start();
+  let release!: () => void;
+  repo.sync.mockImplementationOnce(
+    () =>
+      new Promise<void>((r) => {
+        release = r;
+      }),
+  );
+  const syncing = c.sync();
+  await vi.waitFor(() => expect(repo.sync).toHaveBeenCalledOnce());
+  const read = vi.fn(async () => {
+    await c.sync();
+    expect(repo.sync).toHaveBeenCalledOnce();
+    return c.state.workouts.length;
+  });
+  const output = c.withExportLock(read);
+  expect(read).not.toHaveBeenCalled();
+  release();
+  await syncing;
+  expect(await output).toBe(1);
+  expect(read).toHaveBeenCalledOnce();
 });

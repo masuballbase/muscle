@@ -150,7 +150,7 @@ export function exerciseCatalog(workouts: Workout[], exercises: Exercise[]) {
         name: s.name,
         type: s.type,
         archived: true,
-        aliases: [...(old?.aliases ?? []), s.name],
+        aliases: [...new Set([...(old?.aliases ?? []), s.name])],
       });
     }
   for (const e of exercises) {
