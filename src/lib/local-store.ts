@@ -1,5 +1,6 @@
 /** Account-scoped storage. Credentials must never be stored here. */
-export type LocalCollection = "session_drafts" | "menu_drafts" | "sync_queue";
+export type LocalCollection =
+  "session_drafts" | "menu_drafts" | "sync_queue" | "cache";
 export type LocalRecord<T = unknown> = {
   id: string;
   value: T;
@@ -9,6 +10,7 @@ const collections: LocalCollection[] = [
   "session_drafts",
   "menu_drafts",
   "sync_queue",
+  "cache",
 ];
 export function openUserStore(userId: string, factory?: IDBFactory) {
   if (!userId.trim())
@@ -22,11 +24,12 @@ export function openUserStore(userId: string, factory?: IDBFactory) {
     let failed = false;
     const request = dbFactory.open(
       `muscle:user:${encodeURIComponent(userId)}`,
-      1,
+      2,
     );
     request.onupgradeneeded = () => {
       for (const name of collections)
-        request.result.createObjectStore(name, { keyPath: "id" });
+        if (!request.result.objectStoreNames.contains(name))
+          request.result.createObjectStore(name, { keyPath: "id" });
     };
     request.onerror = () => {
       failed = true;
@@ -81,8 +84,23 @@ export class UserStore {
   }
   async pendingCount() {
     const [sessions, menus, queue] = await Promise.all(
-      collections.map((name) => this.list(name)),
+      collections
+        .filter((name) => name !== "cache")
+        .map((name) => this.list(name)),
     );
-    return sessions.length + menus.length + queue.length;
+    return (
+      sessions.filter((record) => {
+        const value = record.value as {
+          revision?: number;
+          syncedRevision?: number;
+        };
+        return !(
+          typeof value?.revision === "number" &&
+          value.syncedRevision === value.revision
+        );
+      }).length +
+      menus.length +
+      queue.length
+    );
   }
 }

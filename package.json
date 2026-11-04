@@ -14,7 +14,8 @@
     "verify:rls": "NODE_USE_ENV_PROXY=1 node scripts/verify-rls-crud.mjs",
     "verify:rls:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/verify-rls-crud.mjs --cleanup",
     "test:browser": "NODE_USE_ENV_PROXY=1 playwright test",
-    "inspect:rls": "NODE_USE_ENV_PROXY=1 node scripts/inspect-rls.mjs"
+    "inspect:rls": "NODE_USE_ENV_PROXY=1 node scripts/inspect-rls.mjs",
+    "verify:phase2:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/cleanup-phase2.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
