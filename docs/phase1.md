@@ -1,5 +1,7 @@
 # Phase 1 基盤
 
+追加検証の最新結果は [Phase 1追加検証](phase1-verification.md) を参照。以下は初回実装時点の報告で、RLS動作とブラウザの未確認項目は追加検証で更新している。
+
 実装基準は `docs/workout_app_v1_integrated_spec.md`。最新 main の初期構成（`1cfdef546522609744c844a9a48448c694bb7d02`）から `feat/phase1-foundation-rebuild` を作成した。
 
 ## 実装内容と境界

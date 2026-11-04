@@ -35,3 +35,19 @@ npm run verify:supabase
 実検証は読み取りのみ。プロキシ環境のNodeでは `NODE_USE_ENV_PROXY=1` を使う（上記スクリプトに設定済み）。資格情報・環境全体・DBレスポンス行をログ出力しない。
 
 詳細は [Phase 1実装報告](phase1.md)、要件は [統合仕様書](workout_app_v1_integrated_spec.md) を参照。
+
+## Phase 1追加検証
+
+[最新の検証結果と制限](phase1-verification.md) を参照。
+
+```sh
+npm run inspect:rls
+npm run verify:rls
+npm run verify:rls:cleanup
+npm run build
+npm run test:browser
+```
+
+`inspect:rls` は読み取りのみで、カタログ参照不可の場合は「未検証」と終了コード2を返す。`verify:rls` は専用UUIDのテストデータを作成・更新・削除し、既存行には書き込まない。正常・異常終了時に後片付けし、中断時は `/tmp/muscle-phase1-rls-fixtures.json` のIDだけを `verify:rls:cleanup` で削除する。同時実行はしない。台帳を手動で削除しない。
+
+ブラウザテストにはChromiumが必要（`MUSCLE_CHROMIUM_PATH`、初期値 `/usr/bin/chromium`）。3102番で本番サーバーを起動する。trace・動画・スクリーンショットは保存しない。
