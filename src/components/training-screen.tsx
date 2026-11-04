@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { MenuManager } from "./menu-manager";
+import { isDialogNavigation } from "./dialog-history";
 import { usePathname, useRouter } from "next/navigation";
 import { useTraining, SaveStatus } from "./training-context";
 import { ExerciseManager, Sheet } from "./exercise-manager";
@@ -34,6 +36,7 @@ export function TrainingScreen() {
   const [picker, setPicker] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [menuPicker, setMenuPicker] = useState(false);
   useEffect(() => {
     if (path !== "/") {
       router.replace("/");
@@ -43,7 +46,12 @@ export function TrainingScreen() {
       history.pushState({ ...history.state }, "", "#training");
   }, [path, router]);
   useEffect(() => {
-    const back = () => {
+    const back = (event: PopStateEvent) => {
+      if (isDialogNavigation(event)) return;
+      if (menuPicker) {
+        setMenuPicker(false);
+        return;
+      }
       if (ending) {
         setEnding(false);
         return;
@@ -60,7 +68,7 @@ export function TrainingScreen() {
     };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
-  }, [controller, picker, dirty, ending]);
+  }, [controller, picker, dirty, ending, menuPicker]);
   function updateSection(
     id: string,
     transform: (s: Section) => Section,
@@ -355,6 +363,7 @@ export function TrainingScreen() {
         })}
       </main>
       <footer className="training-actions">
+        <button onClick={() => setMenuPicker(true)}>メニューを適用</button>
         <button className="primary" onClick={openPicker}>
           種目を追加
         </button>
@@ -367,6 +376,21 @@ export function TrainingScreen() {
           トレーニングを終了
         </button>
       </footer>
+      {menuPicker && (
+        <MenuManager
+          onClose={() => setMenuPicker(false)}
+          onSelect={(menu) => {
+            try {
+              controller.applyMenu(menu);
+              setMenuPicker(false);
+            } catch (e) {
+              controller.error(
+                e instanceof Error ? e.message : "適用できませんでした。",
+              );
+            }
+          }}
+        />
+      )}
       {picker && (
         <ExerciseManager
           onDirty={setDirty}

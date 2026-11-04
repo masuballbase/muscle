@@ -7,3 +7,7 @@
 - [Phase 1の実装・DB確認・テスト・残課題](docs/phase1.md)
 - [Phase 1追加検証：CRUD・RLS動作・ブラウザ](docs/phase1-verification.md)
 - [Phase 2の実装・保存方式・検証結果](docs/phase2.md)
+
+Phase 3のアプリ実装を追加しています。**実APIの競合応答4件はHTTP 409／PT409で成功し、実DB検証63項目が全成功しました。最新カタログ監査は未検証のため、最終完了判定は保留です。**
+
+- [Phase 3の実装・検証・SQL適用手順](docs/phase3.md)

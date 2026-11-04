@@ -13,6 +13,7 @@ async function setup(store?: UserStore) {
   const db = store ?? (await openUserStore("a", new IDBFactory()));
   const repo = {
     exercises: vi.fn().mockResolvedValue([]),
+    menus:vi.fn().mockResolvedValue([]),
     workouts: vi.fn().mockResolvedValue([]),
     sync: vi.fn().mockResolvedValue(undefined),
     saveExercise: vi.fn(),
