@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   useEffect,
   useRef,
@@ -10,17 +8,12 @@ import {
   type ReactNode,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { TrainingProvider } from "./training-context";
+import { TrainingFrame } from "./training-frame";
 import { getSupabase } from "@/lib/supabase";
 import { openUserStore, type UserStore } from "@/lib/local-store";
 
-const tabs = [
-  { href: "/", label: "記録", icon: "＋" },
-  { href: "/history", label: "履歴", icon: "▦" },
-  { href: "/analysis", label: "分析", icon: "↗" },
-  { href: "/inbody", label: "InBody", icon: "◎" },
-];
 export function AppShell({ children }: { children: ReactNode }) {
-  const path = usePathname();
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     "loading",
   );
   const store = useRef<UserStore | null>(null);
+  const [connection, setConnection] = useState<{userId:string;store:UserStore}|null>(null);
   const userId = session?.user.id;
   useEffect(() => {
     let active = true;
@@ -88,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           return;
         }
         store.current = db;
+        setConnection({userId,store:db});
         setStorage("ready");
       })
       .catch(() => {
@@ -97,6 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       active = false;
       connection?.close();
       store.current = null;
+      setConnection(null);
       setStorage("loading");
     };
   }, [userId]);
@@ -193,55 +189,32 @@ export function AppShell({ children }: { children: ReactNode }) {
         <p className="muted small">登録済みのアカウントを使用してください。</p>
       </main>
     );
-  return (
-    <div className="app">
-      <header className="header">
-        <Link href="/" className="brand">
-          MUSCLE<span>筋トレ記録</span>
-        </Link>
-        <button onClick={logout} disabled={busy}>
+  if (storage !== "ready" || !connection || connection.userId !== userId)
+    return (
+      <main className="auth">
+        <p role="status">
+          {storage === "failed" ? "端末保存失敗" : "端末保存を確認中…"}
+        </p>
+        {storage === "failed" && (
+          <p role="alert">
+            端末保存を利用できません。ブラウザの保存設定を確認し、再読み込みしてください。
+          </p>
+        )}
+        <button disabled={busy} onClick={logout}>
           ログアウト
         </button>
-      </header>
-      <div className="account">
-        <span>{session.user.email}</span>
-        <span role="status">
-          {storage === "failed"
-            ? "端末保存失敗"
-            : storage === "loading"
-              ? "端末保存を確認中…"
-              : "端末保存基盤：利用可能"}
-        </span>
-      </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {storage === "failed" && (
-        <p className="error" role="alert">
-          端末保存を利用できません。ブラウザの保存設定を確認し、再読み込みしてください。
-        </p>
-      )}
-      <main id="main" className="content" key={userId}>
-        {children}
-        <aside className="notice">
-          現在はPhase
-          1の基盤です。記録の作成・サーバー同期は今後の段階で実装します。端末のサイトデータを消去すると、未同期のデータや下書きが失われます。
-        </aside>
       </main>
-      <nav className="tabs" aria-label="メインナビゲーション">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={path === tab.href ? "page" : undefined}
-          >
-            <span aria-hidden="true">{tab.icon}</span>
-            {tab.label}
-          </Link>
-        ))}
-      </nav>
-    </div>
+    );
+  return (
+    <TrainingProvider
+      key={userId}
+      userId={session.user.id}
+      store={connection.store}
+    >
+      <TrainingFrame email={session.user.email} busy={busy} logout={logout}>
+        {error && <p role="alert">{error}</p>}
+        {children}
+      </TrainingFrame>
+    </TrainingProvider>
   );
 }

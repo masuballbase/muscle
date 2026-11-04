@@ -29,6 +29,9 @@ beforeEach(() => {
     data: { subscription: { unsubscribe: mocks.unsubscribe } },
   });
   mocks.openUserStore.mockResolvedValue({
+    list: vi.fn().mockResolvedValue([]),
+    get: vi.fn().mockResolvedValue(undefined),
+    put: vi.fn().mockResolvedValue(undefined),
     close: mocks.close,
     pendingCount: mocks.pendingCount,
   });

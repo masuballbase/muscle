@@ -51,3 +51,43 @@ it("handles browsers without IndexedDB as a recoverable failure", async () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("upgrades a v1 database without losing drafts and excludes synced records/cache from logout warnings", async () => {
+  const factory = new IDBFactory();
+  await new Promise<void>((resolve, reject) => {
+    const request = factory.open("muscle:user:migration", 1);
+    request.onupgradeneeded = () => {
+      for (const name of ["session_drafts", "menu_drafts", "sync_queue"])
+        request.result.createObjectStore(name, { keyPath: "id" });
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction("menu_drafts", "readwrite");
+      tx.objectStore("menu_drafts").put({
+        id: "old",
+        value: { name: "preserved" },
+      });
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    };
+    request.onerror = () => reject(new Error("fixture setup failed"));
+  });
+  const store = await openUserStore("migration", factory);
+  expect(
+    (await store.get<{ name: string }>("menu_drafts", "old"))?.value.name,
+  ).toBe("preserved");
+  await store.put("cache", "training", {});
+  await store.put("session_drafts", "synced", {
+    revision: 2,
+    syncedRevision: 2,
+  });
+  expect(await store.pendingCount()).toBe(1);
+  await store.put("session_drafts", "pending", {
+    revision: 3,
+    syncedRevision: 2,
+  });
+  expect(await store.pendingCount()).toBe(2);
+  store.close();
+});

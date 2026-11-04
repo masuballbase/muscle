@@ -232,3 +232,249 @@ input {
     color: #ffafaf;
   }
 }
+
+select {
+  width: 100%;
+  min-height: 48px;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+}
+.button-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.wide {
+  width: 100%;
+}
+.start-panel {
+  margin: 24px 0;
+}
+.danger {
+  color: #b53434;
+  margin-top: 24px;
+}
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+.save-status button {
+  min-height: 36px;
+  padding: 5px 9px;
+}
+.resume-bar {
+  display: block;
+  margin: 12px 24px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 680px;
+  max-height: 85dvh;
+  border: 1px solid var(--line);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  color: var(--foreground);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.sheet::backdrop {
+  background: #0008;
+}
+.sheet-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.sheet form {
+  display: grid;
+  gap: 12px;
+}
+.exercise-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+.exercise-list li {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  gap: 8px;
+  padding: 8px 0;
+}
+.exercise-list li > button:first-child {
+  flex: 1;
+  text-align: left;
+  border: none;
+}
+.exercise-list span,
+.section-title span {
+  display: block;
+}
+.training-full {
+  min-height: 100dvh;
+  background: var(--background);
+}
+.training-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 12px max(16px, calc((100% - 760px) / 2));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.training-content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px calc(130px + env(safe-area-inset-bottom));
+}
+.workout-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+.section-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+}
+.section-title > button:first-child {
+  text-align: left;
+  flex: 1;
+  border: 0;
+  font-weight: 650;
+}
+.section-body {
+  padding: 0 16px 16px;
+}
+.set-row {
+  margin: 16px 0;
+  padding: 12px 0;
+  border-block: 1px solid var(--line);
+}
+.previous {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.previous button {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+.set-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  margin: 12px 0;
+}
+.set-inputs label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+.set-inputs input {
+  font-size: 1.25rem;
+  margin-top: 6px;
+  min-width: 0;
+  scroll-margin-block: 140px;
+}
+.set-inputs button {
+  padding: 10px;
+}
+.completion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  gap: 8px;
+}
+.performed .completion {
+  color: var(--accent);
+}
+.training-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+}
+.training-actions button {
+  margin: 0;
+}
+.training-actions:has(~ dialog[open]) {
+  pointer-events: none;
+}
+.pr-toast {
+  position: sticky;
+  top: 90px;
+  z-index: 1;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+}
+.summary-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.summary-grid dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.summary-grid dd {
+  font-size: 1.6rem;
+  margin: 6px 0;
+}
+@media (max-height: 550px) {
+  .training-actions {
+    position: sticky;
+    padding: 6px;
+  }
+  .training-actions button {
+    min-height: 40px;
+    padding: 8px;
+  }
+  .training-header {
+    position: static;
+  }
+  .training-content {
+    padding-bottom: 24px;
+  }
+}

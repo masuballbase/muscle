@@ -1,8 +1,9 @@
 # 筋トレ記録アプリ
 
-個人用の筋トレ記録アプリ。Phase 1は4タブ、Supabase Auth、ユーザー別IndexedDB、共通UIの基盤までを実装しています。
+個人用の筋トレ記録アプリ。Phase 2では認証・4タブ・ユーザー別IndexedDBの基盤に、種目管理、トレーニング記録、保存・同期、終了サマリー・PRを追加しています。
 
 - [確定仕様書](docs/workout_app_v1_integrated_spec.md)
 - [開発手順](docs/development.md)
 - [Phase 1の実装・DB確認・テスト・残課題](docs/phase1.md)
 - [Phase 1追加検証：CRUD・RLS動作・ブラウザ](docs/phase1-verification.md)
+- [Phase 2の実装・保存方式・検証結果](docs/phase2.md)
