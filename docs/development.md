@@ -1,40 +1,53 @@
 # 開発環境
 
-筋トレ記録アプリ専用の独立した Next.js プロジェクトです。
-基本情報技術者アプリとのコード・設定・データの共有はありません。
+筋トレ記録アプリ専用の Next.js プロジェクト。FE学習アプリへの変更やコード・設定の共有はしない。
 
-## 初期構成
-
-- Next.js App Router / TypeScript / Tailwind CSS
-- Node.js 24、npm（package-lock.json を使用）
-- src/app: ルートレイアウト、トップページ、共通スタイル
-- @/*: src/* のインポートエイリアス
-
-## セットアップと確認
-
-リポジトリのルートで実行します。
+Node.js 24、npm、Next.js App Router、TypeScript、Tailwind CSS、Supabase Auth、IndexedDBを使用する。
 
 ```sh
 npm ci
 npm run dev -- --hostname 0.0.0.0
-```
-
-別のターミナルから HTTP GET / でトップページを確認できます。
-
-```sh
 npm run lint
 npm run typecheck
+npm test
 npm run build
 npm run start -- --hostname 0.0.0.0
 ```
 
-dev と start は同じポートを使用するため、片方を停止してから起動します。
-初期構成では外部サービス、DB、認証情報は不要です。
+devとstartは同じポートを使うため、片方を停止してから起動する。以前のソース構成から残った `.next/dev/types` が型エラーを起こす場合は、devを停止して生成物のそのディレクトリだけを削除し、型を再生成する。
 
-## 実装範囲
+## 環境変数
 
-現在は初期構成と準備中のトップページのみです。
-要件基準は [統合仕様書](workout_app_v1_integrated_spec.md) です。
-今回は初期構成のみとし、仕様書の Phase 1 以降の機能実装は開始していません。
-記録・認証・DB・4タブなどは今後段階的に実装します。
-Supabase への接続・変更・プロジェクト作成は行っていません。
+既存の環境設定を使用する。値はコード・ドキュメント・GitHubへ保存しない。
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`（公開可能キーのみ）
+- `MUSCLE_TEST_A_EMAIL` / `MUSCLE_TEST_A_PASSWORD`
+- `MUSCLE_TEST_B_EMAIL` / `MUSCLE_TEST_B_PASSWORD`
+
+テスト用4変数はNode実行専用。ブラウザ用の接頭辞を付けない。service_role・秘密鍵は使用しない。Next.jsの公開環境変数はビルド時に取り込まれるため、本番ビルドにも設定が必要。
+
+```sh
+npm run inspect:db
+npm run verify:supabase
+```
+
+実検証は読み取りのみ。プロキシ環境のNodeでは `NODE_USE_ENV_PROXY=1` を使う（上記スクリプトに設定済み）。資格情報・環境全体・DBレスポンス行をログ出力しない。
+
+詳細は [Phase 1実装報告](phase1.md)、要件は [統合仕様書](workout_app_v1_integrated_spec.md) を参照。
+
+## Phase 1追加検証
+
+[最新の検証結果と制限](phase1-verification.md) を参照。
+
+```sh
+npm run inspect:rls
+npm run verify:rls
+npm run verify:rls:cleanup
+npm run build
+npm run test:browser
+```
+
+`inspect:rls` は読み取りのみで、カタログ参照不可の場合は「未検証」と終了コード2を返す。`verify:rls` は専用UUIDのテストデータを作成・更新・削除し、既存行には書き込まない。正常・異常終了時に後片付けし、中断時は `/tmp/muscle-phase1-rls-fixtures.json` のIDだけを `verify:rls:cleanup` で削除する。同時実行はしない。台帳を手動で削除しない。
+
+ブラウザテストにはChromiumが必要（`MUSCLE_CHROMIUM_PATH`、初期値 `/usr/bin/chromium`）。3102番で本番サーバーを起動する。trace・動画・スクリーンショットは保存しない。
