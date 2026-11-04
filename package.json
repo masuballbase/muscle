@@ -21,7 +21,10 @@
     "test:browser:phase1": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase1.spec.ts",
     "check:phase3:rpcs": "NODE_USE_ENV_PROXY=1 node scripts/check-phase3-rpcs.mjs",
     "verify:phase3:live": "NODE_USE_ENV_PROXY=1 node scripts/verify-phase3-live.mjs",
-    "verify:phase3:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/verify-phase3-live.mjs --cleanup"
+    "verify:phase3:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/verify-phase3-live.mjs --cleanup",
+    "test:browser:phase4:local": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase4.spec.ts",
+    "test:browser:phase4:live": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase4-live.spec.ts",
+    "verify:phase4:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/cleanup-phase4.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

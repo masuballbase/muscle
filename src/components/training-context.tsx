@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { GoalsProvider } from "./goals-context";
 import type { UserStore } from "@/lib/local-store";
 import { getSupabase } from "@/lib/supabase";
 import { TrainingController } from "@/lib/training/controller";
@@ -47,7 +48,13 @@ export function TrainingProvider({
       controller.dispose();
     };
   }, [controller]);
-  return <Context.Provider value={controller}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={controller}>
+      <GoalsProvider userId={userId} store={store}>
+        {children}
+      </GoalsProvider>
+    </Context.Provider>
+  );
 }
 export function useTraining() {
   const controller = useContext(Context);
