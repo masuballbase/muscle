@@ -8,6 +8,6 @@
 - [Phase 1追加検証：CRUD・RLS動作・ブラウザ](docs/phase1-verification.md)
 - [Phase 2の実装・保存方式・検証結果](docs/phase2.md)
 
-Phase 3のアプリ実装を追加しています。**承認済みRPCの本番適用と実DB検証が残っており、完了判定は保留です。**
+Phase 3のアプリ実装を追加しています。**RPCは本番適用済みですが、実DB検証で競合応答4件の問題が残り、DB変更保留のため完了判定は保留です。**
 
 - [Phase 3の実装・検証・SQL適用手順](docs/phase3.md)

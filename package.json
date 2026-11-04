@@ -19,7 +19,9 @@
     "test:sql:phase3": "vitest run tests/sql/phase3-atomic.test.ts",
     "test:browser:phase3:local": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase3.spec.ts",
     "test:browser:phase1": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase1.spec.ts",
-    "check:phase3:rpcs": "NODE_USE_ENV_PROXY=1 node scripts/check-phase3-rpcs.mjs"
+    "check:phase3:rpcs": "NODE_USE_ENV_PROXY=1 node scripts/check-phase3-rpcs.mjs",
+    "verify:phase3:live": "NODE_USE_ENV_PROXY=1 node scripts/verify-phase3-live.mjs",
+    "verify:phase3:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/verify-phase3-live.mjs --cleanup"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

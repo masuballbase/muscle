@@ -73,3 +73,15 @@ npm run check:phase3:rpcs
 ```
 
 ローカルSQLテストはPGliteのメモリ内DBで動作し、本番への接続や書き込みをしない。`tests/sql/phase3-fixture.sql` は本番に適用しない。準備確認は関数未公開の場合に終了コード2。実Supabaseを含む全ブラウザ回帰はSQL適用後に実行する。
+
+### Phase 3実DB追加検証
+
+初回RPCは適用済み。通常CRUD・ロールバックと既存RLS回帰、全ブラウザ8件は成功したが、古い版に対する40001応答が実API経由で504となる問題が残る。DB修正はユーザー指示で保留。[最新の判定](phase3.md)を参照。
+
+```sh
+npm run verify:phase3:live
+npm run verify:phase3:cleanup
+npm run verify:phase3:cleanup -- --browser-cleanup
+```
+
+専用UUIDだけを作成・削除し、既存行への書き込みは拒否する。中断時の台帳を消さずcleanupで処理する。未承認の `phase3-conflict-response.sql` は適用しない。
