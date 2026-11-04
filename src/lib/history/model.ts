@@ -5,13 +5,19 @@ import {
   improvements,
   validSet,
 } from "../training/model";
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
 export function dayKey(iso: string | Date, timeZone = "Asia/Tokyo") {
-  const parts = new Intl.DateTimeFormat("en", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date(iso));
+  let formatter = dayFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    dayFormatters.set(timeZone, formatter);
+  }
+  const parts = formatter.formatToParts(new Date(iso));
   const value = (key: string) => parts.find((part) => part.type === key)!.value;
   return `${value("year")}-${value("month")}-${value("day")}`;
 }

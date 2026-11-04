@@ -86,6 +86,7 @@ export async function prepare(context: BrowserContext, reference = new Date()) {
   );
   await db.exec(readFileSync("tests/sql/phase4-fixture.sql", "utf8"));
   await db.exec(readFileSync("tests/sql/phase5-fixture.sql", "utf8"));
+  await db.exec(readFileSync("db/proposals/phase6-atomic-sync.sql", "utf8"));
   const start = new Date(reference);
   start.setDate(start.getDate() - 1);
   start.setUTCHours(14, 50, 0, 0);
@@ -196,7 +197,14 @@ export async function prepare(context: BrowserContext, reference = new Date()) {
             const p = JSON.parse(request.postData()!);
             let sql: string;
             let args: unknown[];
-            if (table === "save_training_menu") {
+            if (table === "sync_training_session") {
+              sql =
+                "SELECT public.sync_training_session($1::jsonb,$2::jsonb) AS value";
+              args = [
+                JSON.stringify(p.p_workout),
+                JSON.stringify(p.p_expected),
+              ];
+            } else if (table === "save_training_menu") {
               sql =
                 "SELECT public.save_training_menu($1,$2,$3::jsonb,$4::jsonb) AS value";
               args = [

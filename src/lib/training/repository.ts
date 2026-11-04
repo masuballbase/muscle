@@ -6,7 +6,8 @@ import {
   type Workout,
   type Section,
   type SetRecord,
-  validSet,
+  syncSnapshot,
+  SyncConflictError,
 } from "./model";
 // PostgREST results are checked at each step. No service-role access or schema changes.
 export class TrainingRepository {
@@ -22,7 +23,14 @@ export class TrainingRepository {
   private async result<T>(
     query: PromiseLike<{ data: T[] | null; error: unknown }>,
   ): Promise<T[]> {
-    const { data, error } = await query;
+    type Bounded = typeof query & {
+      retry?: (enabled: boolean) => typeof query;
+      abortSignal?: (signal: AbortSignal) => typeof query;
+    };
+    const once = (query as Bounded).retry?.(false) ?? query;
+    const bounded =
+      (once as Bounded).abortSignal?.(AbortSignal.timeout(8000)) ?? once;
+    const { data, error } = await bounded;
     if (error)
       throw new Error(
         "サーバーへの保存・読み込みに失敗しました。通信状態を確認してください。",
@@ -130,12 +138,15 @@ export class TrainingRepository {
   async saveMenu(menu: Menu, expected: Menu | null): Promise<Menu> {
     await this.owner();
     validateMenu(menu);
-    const { data, error } = await this.client.rpc("save_training_menu", {
-      p_id: menu.id,
-      p_name: menu.name,
-      p_items: menu.items,
-      p_expected: expected,
-    });
+    const { data, error } = await this.client
+      .rpc("save_training_menu", {
+        p_id: menu.id,
+        p_name: menu.name,
+        p_items: menu.items,
+        p_expected: expected,
+      })
+      .retry(false)
+      .abortSignal(AbortSignal.timeout(20000));
     if (error)
       throw new Error(
         ["40001", "PT409"].includes(error.code)
@@ -214,201 +225,82 @@ export class TrainingRepository {
       all("session_exercises", "id"),
       all("workout_sets", "id"),
     ]);
-    return sessions.map((row) => ({
-      id: String(row.id),
-      name: String(row.name),
-      startedAt: String(row.started_at),
-      endedAt: row.ended_at ? String(row.ended_at) : null,
-      revision: Number(row.revision),
-      syncedRevision: Number(row.revision),
-      sections: sections
-        .filter((s) => s.session_id === row.id)
-        .sort((a, b) => Number(a.position) - Number(b.position))
-        .map(
-          (s) =>
-            ({
-              id: String(s.id),
-              exerciseId: String(s.exercise_id),
-              name: String(s.exercise_name_snapshot),
-              type: s.record_type_snapshot as Section["type"],
-              sets: sets
-                .filter((set) => set.session_exercise_id === s.id)
-                .sort((a, b) => Number(a.position) - Number(b.position))
-                .map(
-                  (set) =>
-                    ({
-                      id: String(set.id),
-                      weight:
-                        set.weight_kg == null ? "" : String(set.weight_kg),
-                      reps: set.reps == null ? "" : String(set.reps),
-                      seconds:
-                        set.duration_seconds == null
-                          ? ""
-                          : String(set.duration_seconds),
-                      performed: Boolean(set.is_performed),
-                      copied: Boolean(set.is_copied),
-                    }) satisfies SetRecord,
-                ),
-            }) satisfies Section,
-        ),
-    }));
+    return sessions
+      .map((row) => ({
+        id: String(row.id),
+        name: String(row.name),
+        startedAt: String(row.started_at),
+        endedAt: row.ended_at ? String(row.ended_at) : null,
+        revision: Number(row.revision),
+        syncedRevision: Number(row.revision),
+        sections: sections
+          .filter((s) => s.session_id === row.id)
+          .sort((a, b) => Number(a.position) - Number(b.position))
+          .map(
+            (s) =>
+              ({
+                id: String(s.id),
+                exerciseId: String(s.exercise_id),
+                name: String(s.exercise_name_snapshot),
+                type: s.record_type_snapshot as Section["type"],
+                sets: sets
+                  .filter((set) => set.session_exercise_id === s.id)
+                  .sort((a, b) => Number(a.position) - Number(b.position))
+                  .map(
+                    (set) =>
+                      ({
+                        id: String(set.id),
+                        weight:
+                          set.weight_kg == null ? "" : String(set.weight_kg),
+                        reps: set.reps == null ? "" : String(set.reps),
+                        seconds:
+                          set.duration_seconds == null
+                            ? ""
+                            : String(set.duration_seconds),
+                        performed: Boolean(set.is_performed),
+                        copied: Boolean(set.is_copied),
+                      }) satisfies SetRecord,
+                  ),
+              }) satisfies Section,
+          ),
+      }))
+      .map((w) => ({ ...w, syncBase: syncSnapshot(w) }));
   }
   async sync(workout: Workout) {
     await this.owner();
-    const owner = { user_id: this.userId };
-    const remote = await this.result(
-      this.table("sessions")
-        .select("id,status,revision")
-        .eq("user_id", this.userId)
-        .eq("id", workout.id),
-    );
-    if (remote[0]?.status === "completed") {
-      if (!workout.endedAt)
-        throw new Error("サーバーで終了済みです。再読み込みしてください。");
-      if (Number(remote[0].revision) !== workout.revision)
+    // Legacy pending data without a known baseline may only reconcile an exact
+    // server replay; it never authorizes creation of a missing server record.
+    const expected = [
+      ...(workout.syncBase
+        ? [workout.syncBase]
+        : workout.syncedRevision === 0
+          ? [null]
+          : []),
+      ...(workout.syncAttempts ?? []),
+    ];
+    const { data, error } = await this.client
+      .rpc("sync_training_session", {
+        p_workout: syncSnapshot(workout),
+        p_expected: expected,
+      })
+      .retry(false)
+      .abortSignal(AbortSignal.timeout(20000));
+    if (error) {
+      if (["PT409", "23505"].includes(error.code))
+        throw new SyncConflictError(
+          "競合を検出したため同期を停止しました。端末データを保持しています。JSON出力でサーバーと端末の両方を確認してください。",
+        );
+      if (error.code === "PGRST202")
         throw new Error(
-          "サーバーの記録と版が一致しません。端末の記録を保持しています。",
+          "サーバーの同期準備が未完了です。端末保存を維持しています。",
         );
-      return;
-    }
-    if (!remote.length) {
-      await this.result(
-        this.table("sessions").insert({
-          id: workout.id,
-          ...owner,
-          name: workout.name,
-          started_at: workout.startedAt,
-          status: "active",
-          ended_at: null,
-          revision: workout.revision,
-        }),
-      );
-    }
-    // Delete tombstones and temporarily move positions to avoid unique-position conflicts on retries.
-    const remoteSections = await this.result(
-      this.table("session_exercises")
-        .select("id,position")
-        .eq("user_id", this.userId)
-        .eq("session_id", workout.id),
-    );
-    const sectionIds = remoteSections.map((s) => s.id);
-    if (sectionIds.length) {
-      const remoteSets = await this.result(
-        this.table("workout_sets")
-          .select("id,position")
-          .eq("user_id", this.userId)
-          .in("session_exercise_id", sectionIds),
-      );
-      const retained = new Set(
-        workout.sections.flatMap((s) => s.sets.map((set) => set.id)),
-      );
-      for (const set of remoteSets)
-        if (!retained.has(set.id))
-          await this.result(
-            this.table("workout_sets")
-              .delete()
-              .eq("user_id", this.userId)
-              .eq("id", set.id),
-          );
-      const base =
-        Math.max(
-          0,
-          ...remoteSets.map((set) => Number(set.position)),
-          ...workout.sections.map((s) => s.sets.length),
-        ) + 1000;
-      for (const [index, set] of remoteSets.entries())
-        if (retained.has(set.id))
-          await this.result(
-            this.table("workout_sets")
-              .update({ position: base + index })
-              .eq("user_id", this.userId)
-              .eq("id", set.id),
-          );
-    }
-    const sectionBase =
-      Math.max(
-        0,
-        ...remoteSections.map((s) => Number(s.position)),
-        workout.sections.length,
-      ) + 1000;
-    for (const [index, s] of remoteSections.entries()) {
-      if (!workout.sections.some((local) => local.id === s.id))
-        await this.result(
-          this.table("session_exercises")
-            .delete()
-            .eq("user_id", this.userId)
-            .eq("id", s.id),
-        );
-      else
-        await this.result(
-          this.table("session_exercises")
-            .update({ position: sectionBase + index })
-            .eq("user_id", this.userId)
-            .eq("id", s.id),
-        );
-    }
-    for (const [position, section] of workout.sections.entries()) {
-      await this.owner();
-      await this.result(
-        this.table("session_exercises").upsert({
-          id: section.id,
-          ...owner,
-          session_id: workout.id,
-          exercise_id: section.exerciseId,
-          exercise_name_snapshot: section.name,
-          record_type_snapshot: section.type,
-          position,
-        }),
-      );
-      if (section.sets.length)
-        await this.result(
-          this.table("workout_sets").upsert(
-            section.sets.map((set, position) => ({
-              id: set.id,
-              ...owner,
-              session_exercise_id: section.id,
-              record_type: section.type,
-              position,
-              weight_kg:
-                section.type === "weight_reps" &&
-                /^\d+(\.\d+)?$/.test(set.weight)
-                  ? Number(set.weight)
-                  : null,
-              reps:
-                section.type !== "duration" &&
-                /^\d+$/.test(set.reps) &&
-                Number(set.reps) >= 1
-                  ? Number(set.reps)
-                  : null,
-              duration_seconds:
-                section.type === "duration" &&
-                /^\d+$/.test(set.seconds) &&
-                Number(set.seconds) >= 1
-                  ? Number(set.seconds)
-                  : null,
-              is_performed: set.performed && validSet(set, section.type),
-              is_copied: set.copied,
-            })),
-          ),
-        );
-    }
-    await this.owner();
-    // Completion is published only after every child write succeeds.
-    const published = await this.result(
-      this.table("sessions")
-        .update({
-          name: workout.name,
-          status: workout.endedAt ? "completed" : "active",
-          ended_at: workout.endedAt,
-          revision: workout.revision,
-        })
-        .eq("user_id", this.userId)
-        .eq("id", workout.id)
-        .select("id"),
-    );
-    if (published.length !== 1)
       throw new Error(
-        "同期の確定を確認できません。端末の記録を保持しています。",
+        "サーバー同期を確認できません。端末データを保持し、同じIDで再試行します。",
+      );
+    }
+    if (Number(data) !== workout.revision)
+      throw new Error(
+        "同期成功応答の版を確認できません。端末データを保持しています。",
       );
   }
 }

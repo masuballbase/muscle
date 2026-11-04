@@ -25,7 +25,29 @@ export type Section = {
   type: RecordType;
   sets: SetRecord[];
 };
+export type SyncSnapshot = {
+  id: string;
+  name: string;
+  startedAt: string;
+  endedAt: string | null;
+  sections: Section[];
+  revision: number;
+};
+export class SyncConflictError extends Error {}
+export function syncSnapshot(w: SyncSnapshot): SyncSnapshot {
+  return {
+    id: w.id,
+    name: w.name,
+    startedAt: w.startedAt,
+    endedAt: w.endedAt,
+    sections: structuredClone(w.sections),
+    revision: w.revision,
+  };
+}
 export type Workout = {
+  syncBase?: SyncSnapshot | null;
+  syncAttempts?: SyncSnapshot[];
+  syncBlocked?: boolean;
   id: string;
   name: string;
   startedAt: string;

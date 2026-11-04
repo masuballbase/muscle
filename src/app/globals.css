@@ -468,7 +468,7 @@ select {
     padding: 6px;
   }
   .training-actions button {
-    min-height: 40px;
+    min-height: 44px;
     padding: 8px;
   }
   .training-header {
@@ -619,3 +619,13 @@ select { font: inherit; color: var(--foreground); background: var(--surface); bo
 .inbody-fields dt { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
 .inbody-fields dd { margin: 6px 0 0; overflow-wrap: anywhere; }
 .inbody-skip-checkbox { width: 24px; min-height: 24px; vertical-align: middle; }
+
+/* VisualViewport geometry is also exercised with a simulated keyboard in tests. */
+:root[data-keyboard-open="true"] .training-actions { position: fixed; bottom: var(--keyboard-inset, 0px); padding: 6px 12px; }
+:root[data-keyboard-open="true"] .training-actions button { min-height: 44px; padding: 6px 10px; }
+:root[data-keyboard-open="true"] .training-content { padding-bottom: calc(170px + var(--keyboard-inset, 0px)); }
+:root[data-keyboard-open="true"] .sheet { max-height: calc(var(--usable-viewport, 100dvh) - 20px); }
+input, textarea, select { scroll-margin-block: 100px 180px; }
+button { touch-action: manipulation; }
+
+:root[data-keyboard-open="true"] .sheet { bottom: var(--keyboard-inset, 0px); }
