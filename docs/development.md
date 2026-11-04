@@ -102,3 +102,16 @@ npm run verify:phase4:cleanup
 ```
 
 実ブラウザ試験は専用IDの台帳を使用し、翌週の目標が既に存在する場合は変更せず拒否する。同じプロジェクトに対する書き込み試験は並列実行しない。終了後は残存0件を確認する。新しいSQL fixtureはローカルPGlite専用で、Supabaseへ適用しない。
+
+
+## Phase 5 InBody管理
+
+正式44ヘッダーとマッピングは `src/lib/inbody/profile.ts` を参照。確認済みの列定義と匿名化サンプルに基づく。実際の個人測定データや添付サンプル本体をコミットせず、架空値を生成してテストする。全体の保存・日付・重複ルールは [Phase 5](phase5.md) を参照。
+
+```sh
+npm run test:browser:phase5:local
+npm run test:browser:phase5:live
+npm run verify:phase5:cleanup
+```
+
+実DB試験は専用UUIDの台帳を使用し、既存測定は変更しない。中断時は `/tmp/muscle-phase5-fixtures.json`、`/tmp/muscle-phase5-training-fixtures.json` を手動削除せずcleanupで処理する。DBのDDL/RLS変更は不要。新しいSQL fixtureもローカルPGlite専用で、本番Supabaseへ適用しない。

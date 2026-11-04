@@ -12,6 +12,14 @@ export const USER = id(1),
   SECTION = id(31),
   SET = id(32);
 const allowed: Record<string, string[]> = {
+  inbody_records: [
+    "id",
+    "user_id",
+    "measured_on",
+    "imported_at",
+    "source_filename",
+    "raw_fields",
+  ],
   weekly_goal_schedule: ["id", "user_id", "effective_monday", "target_days"],
   exercises: ["id", "user_id", "name", "record_type", "archived_at"],
   menus: ["id", "user_id", "name"],
@@ -56,6 +64,10 @@ const allowed: Record<string, string[]> = {
 };
 export let db: PGlite;
 let failRpc = false;
+let failInBody = false;
+export function setInBodyFailure(value: boolean) {
+  failInBody = value;
+}
 export function setRpcFailure(value: boolean) {
   failRpc = value;
 }
@@ -73,6 +85,7 @@ export async function prepare(context: BrowserContext, reference = new Date()) {
     readFileSync("db/proposals/phase3-conflict-response.sql", "utf8"),
   );
   await db.exec(readFileSync("tests/sql/phase4-fixture.sql", "utf8"));
+  await db.exec(readFileSync("tests/sql/phase5-fixture.sql", "utf8"));
   const start = new Date(reference);
   start.setDate(start.getDate() - 1);
   start.setUTCHours(14, 50, 0, 0);
@@ -113,6 +126,7 @@ export async function prepare(context: BrowserContext, reference = new Date()) {
     "completed",
   ]);
   failRpc = false;
+  failInBody = false;
   failGoals = false;
   await context.route(
     "https://mcuiikilwrxuylwuljmk.supabase.co/**",
@@ -156,6 +170,9 @@ export async function prepare(context: BrowserContext, reference = new Date()) {
         const rpc = url.pathname.includes("/rpc/");
         if (
           (rpc && failRpc) ||
+          (table === "inbody_records" &&
+            failInBody &&
+            request.method() !== "GET") ||
           (table === "weekly_goal_schedule" &&
             failGoals &&
             request.method() !== "GET")
@@ -306,7 +323,8 @@ export async function prepare(context: BrowserContext, reference = new Date()) {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify(result, (key, value) =>
-            key === "effective_monday" && typeof value === "string"
+            ["effective_monday", "measured_on"].includes(key) &&
+            typeof value === "string"
               ? value.slice(0, 10)
               : value,
           ),
