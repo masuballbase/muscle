@@ -1,3 +1,5 @@
+import { type Menu, validateMenu } from "../menus/model";
+import { validateHistory, editableHistory } from "../history/model";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type Exercise,
@@ -32,12 +34,19 @@ export class TrainingRepository {
   }
   async exercises(): Promise<Exercise[]> {
     await this.owner();
-    return this.result(
-      this.table("exercises")
-        .select("id,name,record_type,archived_at")
-        .eq("user_id", this.userId)
-        .order("name"),
-    );
+    const all: Exercise[] = [];
+    for (let offset = 0; ; offset += 500) {
+      const page = await this.result(
+        this.table("exercises")
+          .select("id,name,record_type,archived_at")
+          .eq("user_id", this.userId)
+          .order("id")
+          .range(offset, offset + 499),
+      );
+      all.push(...page);
+      if (page.length < 500) break;
+    }
+    return all.sort((a, b) => a.name.localeCompare(b.name, "ja"));
   }
   async saveExercise(exercise: Exercise, create: boolean) {
     await this.owner();
@@ -80,38 +89,108 @@ export class TrainingRepository {
   }
   async archive(exercise: Exercise) {
     await this.owner();
-    const active = await this.result(
-      this.table("sessions")
-        .select("id")
-        .eq("user_id", this.userId)
-        .eq("status", "active"),
-    );
-    if (active.length) {
-      const sections = await this.result(
-        this.table("session_exercises")
-          .select("id")
-          .eq("user_id", this.userId)
-          .eq("exercise_id", exercise.id)
-          .in(
-            "session_id",
-            active.map((s) => s.id),
-          )
-          .limit(1),
+    const { error } = await this.client.rpc("archive_training_exercise", {
+      p_id: exercise.id,
+    });
+    if (error)
+      throw new Error(
+        "種目を削除できません。進行中の使用状況と接続を確認してください。",
       );
-      if (sections.length)
-        throw new Error("進行中のトレーニングで使用中の種目は削除できません。");
-    }
-    // Saved menu items are removed; master and historical snapshots remain.
-    await this.result(
-      this.table("menu_items")
+  }
+  async menus(): Promise<Menu[]> {
+    await this.owner();
+    const all = async (table: string) => {
+      const rows: Record<string, unknown>[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const page = await this.result(
+          this.table(table)
+            .select("*")
+            .eq("user_id", this.userId)
+            .order("id")
+            .range(offset, offset + 499),
+        );
+        rows.push(...page);
+        if (page.length < 500) return rows;
+      }
+    };
+    const [menus, items] = await Promise.all([all("menus"), all("menu_items")]);
+    return menus.map((row) => ({
+      id: String(row.id),
+      name: String(row.name),
+      items: items
+        .filter((item) => item.menu_id === row.id)
+        .sort((a, b) => Number(a.position) - Number(b.position))
+        .map((item) => ({
+          id: String(item.id),
+          exerciseId: String(item.exercise_id),
+          plannedSets: Number(item.planned_sets),
+        })),
+    }));
+  }
+  async saveMenu(menu: Menu, expected: Menu | null): Promise<Menu> {
+    await this.owner();
+    validateMenu(menu);
+    const { data, error } = await this.client.rpc("save_training_menu", {
+      p_id: menu.id,
+      p_name: menu.name,
+      p_items: menu.items,
+      p_expected: expected,
+    });
+    if (error)
+      throw new Error(
+        error.code === "40001"
+          ? "メニューが更新されています。一覧を再読み込みして確認してください。"
+          : "正式保存を確認できません。下書きを保持しています。接続を確認して再読み込みしてください。",
+      );
+    return data as Menu;
+  }
+  async deleteMenu(menu: Menu) {
+    await this.owner();
+    const rows = await this.result(
+      this.table("menus")
         .delete()
+        .eq("id", menu.id)
         .eq("user_id", this.userId)
-        .eq("exercise_id", exercise.id),
+        .select("id"),
     );
-    await this.saveExercise(
-      { ...exercise, archived_at: new Date().toISOString() },
-      false,
+    if (rows.length !== 1)
+      throw new Error("削除を確認できません。再読み込みしてください。");
+  }
+  async editHistory(workout: Workout) {
+    await this.owner();
+    if (!editableHistory(workout))
+      throw new Error("同期済みの終了記録のみ編集できます。");
+    validateHistory(workout);
+    const { data, error } = await this.client.rpc("edit_training_history", {
+      p_id: workout.id,
+      p_revision: workout.revision,
+      p_name: workout.name,
+      p_ended_at: workout.endedAt,
+      p_sections: workout.sections,
+    });
+    if (error)
+      throw new Error(
+        error.code === "40001"
+          ? "履歴が更新されています。再読み込みして確認してください。"
+          : "正式保存を確認できません。入力を保持しています。接続を確認して再読み込みしてください。",
+      );
+    return Number(data);
+  }
+  async deleteHistory(workout: Workout) {
+    await this.owner();
+    if (!editableHistory(workout))
+      throw new Error("未同期の記録は削除できません。");
+    const rows = await this.result(
+      this.table("sessions")
+        .delete()
+        .eq("id", workout.id)
+        .eq("user_id", this.userId)
+        .eq("status", "completed")
+        .eq("revision", workout.revision)
+        .select("id"),
     );
+    if (rows.length !== 1)
+      throw new Error("削除を確認できません。履歴を再読み込みしてください。");
   }
   async workouts(): Promise<Workout[]> {
     await this.owner();

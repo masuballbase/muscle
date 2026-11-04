@@ -478,3 +478,116 @@ select {
     padding-bottom: 24px;
   }
 }
+
+fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.menu-card,
+.history-card {
+  display: block;
+  text-align: left;
+  width: 100%;
+  margin: 12px 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.menu-card strong,
+.menu-card span,
+.history-card strong,
+.history-card time,
+.history-card span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.history-card time,
+.history-card span,
+.menu-card span {
+  font-size: 0.8rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.menu-items {
+  list-style: none;
+  padding: 0;
+}
+.menu-items li {
+  border-block: 1px solid var(--line);
+  padding: 12px 0;
+}
+.menu-items li > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.menu-items input {
+  max-width: 120px;
+}
+.drag-handle {
+  touch-action: none;
+  cursor: grab;
+}
+.calendar-heading,
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+.calendar-grid button {
+  padding: 4px;
+  min-width: 0;
+  min-height: 52px;
+  position: relative;
+  border-color: transparent;
+}
+.calendar-grid [aria-pressed="true"] {
+  border-color: var(--accent);
+  font-weight: 750;
+}
+.weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 8px 0;
+}
+.other-month {
+  opacity: 0.45;
+}
+.calendar-dot {
+  display: block;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.calendar-dot.pending {
+  color: transparent;
+  -webkit-text-stroke: 1px var(--accent);
+}
+.history-exercise {
+  border-block: 1px solid var(--line);
+  padding: 16px 0;
+}
+.checkbox {
+  width: auto;
+  min-height: 24px;
+  margin: 8px;
+  vertical-align: middle;
+}
+.training-actions {
+  flex-wrap: wrap;
+}
+.training-actions button {
+  padding: 8px 12px;
+}
+.training-content {
+  padding-bottom: calc(160px + env(safe-area-inset-bottom));
+}

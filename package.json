@@ -15,7 +15,11 @@
     "verify:rls:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/verify-rls-crud.mjs --cleanup",
     "test:browser": "NODE_USE_ENV_PROXY=1 playwright test",
     "inspect:rls": "NODE_USE_ENV_PROXY=1 node scripts/inspect-rls.mjs",
-    "verify:phase2:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/cleanup-phase2.mjs"
+    "verify:phase2:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/cleanup-phase2.mjs",
+    "test:sql:phase3": "vitest run tests/sql/phase3-atomic.test.ts",
+    "test:browser:phase3:local": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase3.spec.ts",
+    "test:browser:phase1": "NODE_USE_ENV_PROXY=1 playwright test tests/browser/phase1.spec.ts",
+    "check:phase3:rpcs": "NODE_USE_ENV_PROXY=1 node scripts/check-phase3-rpcs.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -24,6 +28,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/react": "^16.3.3",

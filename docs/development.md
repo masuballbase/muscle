@@ -61,3 +61,15 @@ npm run verify:phase2:cleanup
 ```
 
 IndexedDBはv2に移行し、cacheストアを追加する。これはブラウザ端末内の変更で、Supabaseのテーブル・RLS・権限は変更しない。
+
+## Phase 3
+
+[Phase 3の実装・検証報告](phase3.md) を参照。本ブランチの正式保存・種目削除には、承認済みの3 RPCが必要。本番SQLは未適用で、適用前にアプリだけをデプロイしない。DBやRLSの自動変更処理はない。
+
+```sh
+npm run test:sql:phase3
+npm run test:browser:phase3:local
+npm run check:phase3:rpcs
+```
+
+ローカルSQLテストはPGliteのメモリ内DBで動作し、本番への接続や書き込みをしない。`tests/sql/phase3-fixture.sql` は本番に適用しない。準備確認は関数未公開の場合に終了コード2。実Supabaseを含む全ブラウザ回帰はSQL適用後に実行する。

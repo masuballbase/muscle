@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { MenuManager } from "./menu-manager";
 import { useEffect, useState } from "react";
 import { useTraining } from "./training-context";
 import { ExerciseManager } from "./exercise-manager";
@@ -7,6 +8,7 @@ import { summary, metricLabels } from "@/lib/training/model";
 export function TrainingHome() {
   const { controller, ready, workouts, saveState } = useTraining();
   const [manage, setManage] = useState(false);
+  const [menuMode, setMenuMode] = useState<"manage" | "start" | null>(null);
   const [dirty, setDirty] = useState(false);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const active = controller.active;
@@ -50,9 +52,15 @@ export function TrainingHome() {
             自由に開始
           </button>
         )}
-        <p className="small muted">
-          メニューからの開始・メニュー管理は準備中です。
-        </p>
+        {!active && (
+          <button
+            className="wide"
+            disabled={!ready}
+            onClick={() => setMenuMode("start")}
+          >
+            メニューから開始
+          </button>
+        )}
       </div>
       <div className="button-row">
         <button
@@ -63,7 +71,7 @@ export function TrainingHome() {
         >
           種目管理
         </button>
-        <span className="muted small">メニュー管理：準備中</span>
+        <button onClick={() => setMenuMode("manage")}>メニュー管理</button>
       </div>
       {latest && result && dismissed !== latest.id && (
         <section className="panel" aria-label="完了サマリー">
@@ -111,6 +119,26 @@ export function TrainingHome() {
             <Link href="/history">履歴へ</Link>
           </div>
         </section>
+      )}
+      {menuMode && (
+        <MenuManager
+          onClose={() => setMenuMode(null)}
+          onSelect={
+            menuMode === "start"
+              ? (menu) => {
+                  void controller
+                    .start(menu)
+                    .catch((e) =>
+                      controller.error(
+                        e instanceof Error
+                          ? e.message
+                          : "開始できませんでした。",
+                      ),
+                    );
+                }
+              : undefined
+          }
+        />
       )}
       {manage && (
         <ExerciseManager onDirty={setDirty} onClose={() => history.back()} />
