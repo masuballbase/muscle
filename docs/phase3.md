@@ -203,3 +203,8 @@ RPC CLI、Phase 3実ブラウザ、Phase 2実ブラウザ、既存RLS、Node追�
 - 実機のタッチ操作・Safari/Firefoxなどの既知の未検証事項は維持する。mainへのマージ、Phase 4の実装、DBセッションの終了や再起動は行っていない。
 
 前回作成した読み取り専用調査SQLは `docs/diagnostics/phase3-readonly-investigation.sql` に保存する。このSQLは未実行であり、実行中処理やログの監査結果を得たことは意味しない。
+
+
+## 最終監査とPhase 3完了（ユーザー確認）
+
+ユーザーから、3 RPCの権限設定、8テーブルのRLS/FORCE RLS、32ポリシーの維持がすべて正常との報告を受領した。これにより上記の監査待ちは解消し、ユーザーはPhase 3完了を判定した。mainのマージコミットは `d0efd8bb02951dec8f1a21d6390922ad87e7fa06`。この追記はユーザー提供の監査結果とGit履歴の確認であり、こちらからDB設定を変更したものではない。

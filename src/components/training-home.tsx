@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { WeeklyGoal } from "./weekly-goal";
 import { MenuManager } from "./menu-manager";
 import { useEffect, useState } from "react";
 import { useTraining } from "./training-context";
@@ -62,6 +63,7 @@ export function TrainingHome() {
           </button>
         )}
       </div>
+      <WeeklyGoal compact />
       <div className="button-row">
         <button
           onClick={() => {

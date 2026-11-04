@@ -89,3 +89,16 @@ npm run verify:phase3:cleanup -- --browser-cleanup
 ### 競合応答の修正SQL適用後
 
 適用報告後は、ローカルSQL／ブラウザ試験にも `phase3-conflict-response.sql` を読み込む。アプリはPT409を競合として扱う。実DB試験はHTTP 409とPT409の両方を必須とし、競合要求を15秒で打ち切る。最新の実DB再検証では4件ともHTTP 409／PT409を取得し、計63項目が全成功。[最新の検証結果](phase3.md)のとおり機能上の阻害要因は解消したが、カタログ監査は未検証のため最終完了判定は保留。
+
+
+## Phase 4 成長分析
+
+Phase 3完了後のmainから実装。分析の正式集計条件、週間目標、期間・タイムゾーン・PRのルールと検証結果は [Phase 4](phase4.md) を参照。新しいDB変更は不要。既存weekly_goal_scheduleのIDに既定値がないため、アプリから明示UUIDで作成する。
+
+```sh
+npm run test:browser:phase4:local
+npm run test:browser:phase4:live
+npm run verify:phase4:cleanup
+```
+
+実ブラウザ試験は専用IDの台帳を使用し、翌週の目標が既に存在する場合は変更せず拒否する。同じプロジェクトに対する書き込み試験は並列実行しない。終了後は残存0件を確認する。新しいSQL fixtureはローカルPGlite専用で、Supabaseへ適用しない。
