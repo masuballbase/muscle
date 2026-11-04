@@ -138,7 +138,7 @@ export class TrainingRepository {
     });
     if (error)
       throw new Error(
-        error.code === "40001"
+        ["40001", "PT409"].includes(error.code)
           ? "メニューが更新されています。一覧を再読み込みして確認してください。"
           : "正式保存を確認できません。下書きを保持しています。接続を確認して再読み込みしてください。",
       );
@@ -170,7 +170,7 @@ export class TrainingRepository {
     });
     if (error)
       throw new Error(
-        error.code === "40001"
+        ["40001", "PT409"].includes(error.code)
           ? "履歴が更新されています。再読み込みして確認してください。"
           : "正式保存を確認できません。入力を保持しています。接続を確認して再読み込みしてください。",
       );

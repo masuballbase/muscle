@@ -61,6 +61,9 @@ async function prepare(context: BrowserContext) {
   db = new PGlite();
   await db.exec(readFileSync("tests/sql/phase3-fixture.sql", "utf8"));
   await db.exec(readFileSync("db/proposals/phase3-atomic-writes.sql", "utf8"));
+  await db.exec(
+    readFileSync("db/proposals/phase3-conflict-response.sql", "utf8"),
+  );
   const start = new Date();
   start.setDate(start.getDate() - 1);
   start.setUTCHours(14, 50, 0, 0);
@@ -617,4 +620,82 @@ test("calendar, snapshot detail, cancellation, atomic edit failure, successful e
   expect((await db.query("SELECT * FROM session_exercises")).rows).toHaveLength(
     0,
   );
+});
+
+test("HTTP 409 conflicts preserve formal data and show explicit reload guidance", async ({
+  page,
+}) => {
+  const menu = id(50),
+    item = id(51);
+  await db.query("INSERT INTO menus VALUES($1,$2,$3)", [
+    menu,
+    USER,
+    "競合するメニュー",
+  ]);
+  await db.query("INSERT INTO menu_items VALUES($1,$2,$3,$4,0,2)", [
+    item,
+    USER,
+    menu,
+    EA,
+  ]);
+  await login(page);
+  await page.getByRole("button", { name: "メニュー管理", exact: true }).click();
+  await page
+    .locator("article.menu-card")
+    .filter({ hasText: "競合するメニュー" })
+    .getByRole("button")
+    .first()
+    .click();
+  await page.getByLabel("メニュー名", { exact: true }).fill("古いメニュー編集");
+  await expect(
+    page.getByText("端末下書き保存済み", { exact: true }),
+  ).toBeVisible();
+  await db.query("UPDATE menus SET name=$1 WHERE id=$2", [
+    "別の正式更新",
+    menu,
+  ]);
+  await page
+    .getByRole("button", { name: "正式メニューを保存", exact: true })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "メニューが更新されています",
+  );
+  expect(
+    (
+      await db.query<{ name: string }>("SELECT name FROM menus WHERE id=$1", [
+        menu,
+      ])
+    ).rows[0].name,
+  ).toBe("別の正式更新");
+  await page
+    .getByRole("button", { name: "下書きを残して閉じる", exact: true })
+    .click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "履歴", exact: true })
+    .click();
+  await page
+    .getByRole("region", { name: "直近の記録", exact: true })
+    .getByRole("button", { name: /日付またぎの記録/ })
+    .click();
+  await page.getByRole("button", { name: "編集", exact: true }).click();
+  await page.getByLabel("セッション名", { exact: true }).fill("古い履歴編集");
+  await db.query("UPDATE sessions SET name=$1,revision=2 WHERE id=$2", [
+    "別の正式履歴更新",
+    HISTORY,
+  ]);
+  await page
+    .getByRole("button", { name: "履歴を正式保存", exact: true })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "履歴が更新されています",
+  );
+  expect(
+    (
+      await db.query<{ name: string; revision: number }>(
+        "SELECT name,revision FROM sessions WHERE id=$1",
+        [HISTORY],
+      )
+    ).rows[0],
+  ).toEqual({ name: "別の正式履歴更新", revision: 2 });
 });

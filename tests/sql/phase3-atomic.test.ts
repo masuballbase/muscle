@@ -73,6 +73,9 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(readFileSync("tests/sql/phase3-fixture.sql", "utf8"));
   await db.exec(readFileSync("db/proposals/phase3-atomic-writes.sql", "utf8"));
+  await db.exec(
+    readFileSync("db/proposals/phase3-conflict-response.sql", "utf8"),
+  );
 }, 30000);
 afterAll(async () => {
   await db?.close();
@@ -114,7 +117,7 @@ it("rejects stale menu snapshots without changing formal rows", async () => {
   const old = await saveMenu();
   await saveMenu(old, items, "new");
   const before = await snapshot();
-  await expect(saveMenu(old)).rejects.toMatchObject({ code: "40001" });
+  await expect(saveMenu(old)).rejects.toMatchObject({ code: "PT409" });
   expect(await snapshot()).toEqual(before);
 });
 it("rejects foreign menu exercises and foreign ownership", async () => {
@@ -146,7 +149,7 @@ it("preserves a retained historical name/type and increments revision exactly on
     (await db.query<{ reps: number }>("SELECT reps FROM workout_sets")).rows[0]
       .reps,
   ).toBe(5);
-  await expect(edit()).rejects.toMatchObject({ code: "40001" });
+  await expect(edit()).rejects.toMatchObject({ code: "PT409" });
 });
 it("rolls back all historical rows and the parent after a later set fails", async () => {
   const before = await snapshot();

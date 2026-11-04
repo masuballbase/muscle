@@ -85,3 +85,7 @@ npm run verify:phase3:cleanup -- --browser-cleanup
 ```
 
 専用UUIDだけを作成・削除し、既存行への書き込みは拒否する。中断時の台帳を消さずcleanupで処理する。未承認の `phase3-conflict-response.sql` は適用しない。
+
+### 競合応答の修正SQL適用後
+
+適用報告後は、ローカルSQL／ブラウザ試験にも `phase3-conflict-response.sql` を読み込む。アプリはPT409を競合として扱う。実DB試験はHTTP 409とPT409の両方を必須とし、競合要求を15秒で打ち切る。現在は4件とも応答未取得で失敗するため、[最新の検証結果](phase3.md)のとおり完了保留。カタログ監査は未検証のまま残す。

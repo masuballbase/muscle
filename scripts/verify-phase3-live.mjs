@@ -161,6 +161,7 @@ try {
         updated.items[0].exerciseId === ids.e2 &&
           updated.items[0].plannedSets === 4,
       );
+      const beforeStaleMenu = await menuSnapshot(a, ids.menu);
       const stale = await a.client
         .rpc("save_training_menu", {
           ...args,
@@ -169,9 +170,15 @@ try {
         .retry(false)
         .abortSignal(AbortSignal.timeout(15000));
       check(
-        `${a.label}/menu conflict error response`,
-        stale.error?.code === "40001",
-        stale.error?.code,
+        `${a.label}/menu conflict HTTP 409`,
+        stale.error?.code === "PT409" && stale.status === 409,
+        stale.status === 0
+          ? "NO_HTTP_RESPONSE"
+          : `HTTP_${stale.status}/${stale.error?.code ?? "NO_CODE"}`,
+      );
+      check(
+        `${a.label}/stale menu unchanged`,
+        isDeepStrictEqual(beforeStaleMenu, await menuSnapshot(a, ids.menu)),
       );
       await create(a, "sessions", {
         id: ids.session,
@@ -276,9 +283,15 @@ try {
         .retry(false)
         .abortSignal(AbortSignal.timeout(15000));
       check(
-        `${a.label}/history conflict error response`,
-        historyStale.error?.code === "40001",
-        historyStale.error?.code,
+        `${a.label}/history conflict HTTP 409`,
+        historyStale.error?.code === "PT409" && historyStale.status === 409,
+        historyStale.status === 0
+          ? "NO_HTTP_RESPONSE"
+          : `HTTP_${historyStale.status}/${historyStale.error?.code ?? "NO_CODE"}`,
+      );
+      check(
+        `${a.label}/stale history unchanged`,
+        isDeepStrictEqual(edited, await historySnapshot(a, ids.session)),
       );
       groups.push({ a, ids, args, saved: updated, editArgs, edited });
     }
